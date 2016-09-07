@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import json
 import os
 import re
@@ -8,6 +10,16 @@ from bs4 import BeautifulSoup
 HOME_URL = 'https://mol.medicover.pl/'
 LOGIN_URL = 'https://mol.medicover.pl/Users/Account/LogOn'
 FORM_URL = 'https://mol.medicover.pl/api/MyVisits/SearchFreeSlotsToBook/FormModel?'
+
+OPTION_TO_PARAM_MAP = {
+    'regions': 'regionId',
+    'clinics': 'clinicId',
+    'booking_types': 'bookingTypeId',
+    'languages': 'languageId',
+    'diagnostic_procedures': 'diagnosticProcedureId',
+    'doctors': 'doctorId',
+    'specializations': 'specializationId'
+}
 
 
 def camelcase_to_underscore(val):
@@ -38,6 +50,7 @@ class MedicoverSession(object):
         response.raise_for_status()
 
     def get_form_data(self, params=None):
+        params = params or {}
         response = self.session.get(FORM_URL, params=params)
         return json.loads(response.content)
 
@@ -45,32 +58,43 @@ class MedicoverSession(object):
 class MedicoverForm(object):
     def __init__(self):
         self.medicover_session = MedicoverSession()
-        self.options = self.parse_options(self.medicover_session.get_form_data())
+        self.request_params = {}
+        self.field_set = FieldSet(form=self)
+        self.parse_form_data(self.medicover_session.get_form_data())
 
-    def parse_options(self, data):
-        result = OptionSet()
-        for option_name, values in data.items():
-            if option_name.startswith('available'):
-                result[camelcase_to_underscore(option_name)] = OptionSet(values)
-        return result
+    def parse_form_data(self, data):
+        for select_name, option_list in data.items():
+            if select_name.startswith('available'):
+                underscore_name = camelcase_to_underscore(select_name.lstrip('available_'))
+                self.field_set[underscore_name] = OptionList(underscore_name, self, [option for option in option_list if option['id'] >= 0])
+
+    def update_options(self):
+        self.parse_form_data(self.medicover_session.get_form_data(self.request_params))
 
 
-class OptionSet(dict):
-    
-    def __init__(self, data=None):
-        data = [(option['text'], Option(name=option['text'], value=option['id'], option_set=self)) for option in data]
-        super(OptionSet, self).__init__(data)
-
+class CustomDictMixin(object):
     def __getattr__(self, name):
-        if isinstance(self[name], OptionSet):
-            print self[name].keys()
-        else:
-            return self[name]
+        return self[name]
+
+    def __repr__(self):
+        return '\n'.join(key_name for key_name in self.keys()).encode('utf-8')
 
 
-class Option(object):
+class FieldSet(CustomDictMixin, dict):
+    pass
 
-    def __init__(self, name, value, option_set):
+
+class OptionList(list):
+
+    def __init__(self, name, form, seq=()):
         self.name = name
-        self.value = value
-        self.option_set = option_set
+        self.form = form
+        super(OptionList, self).__init__(seq)
+
+    def __repr__(self):
+        return '\n'.join('{:d}: {:s}'.format(index, option['text']) for index, option in enumerate(self)).encode('utf-8')
+
+    def select(self, index):
+        option_url_param_name = OPTION_TO_PARAM_MAP[self.name]
+        self.form.request_params[option_url_param_name] = self[index]['id']
+
