@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 HOME_URL = 'https://mol.medicover.pl/'
 LOGIN_URL = 'https://mol.medicover.pl/Users/Account/LogOn'
 FORM_URL = 'https://mol.medicover.pl/api/MyVisits/SearchFreeSlotsToBook/FormModel?'
+AVAILABLE_VISITS_URL = 'https://mol.medicover.pl/api/MyVisits/SearchFreeSlotsToBook?language=pl-PL'
 
 OPTION_TO_PARAM_MAP = {
     'regions': 'regionId',
@@ -54,22 +55,35 @@ class MedicoverSession(object):
         response = self.session.get(FORM_URL, params=params)
         return json.loads(response.content)
 
+    def get_available_visits(self, data=None):
+        data = data or {}
+        response = self.session.post(AVAILABLE_VISITS_URL, data=data)
+        return json.loads(response.content)
+
 
 class MedicoverForm(object):
     def __init__(self):
         self.medicover_session = MedicoverSession()
         self.request_params = {}
-        self.field_set = FieldSet(form=self)
+        self.can_search = False
+        self.fields = FieldSet()
         self.parse_form_data(self.medicover_session.get_form_data())
 
     def parse_form_data(self, data):
         for select_name, option_list in data.items():
             if select_name.startswith('available'):
                 underscore_name = camelcase_to_underscore(select_name.lstrip('available_'))
-                self.field_set[underscore_name] = OptionList(underscore_name, self, [option for option in option_list if option['id'] >= 0])
+                self.fields[underscore_name] = OptionList(underscore_name, self,
+                                                          [option for option in option_list if option['id'] >= 0])
+        self.can_search = data['canSearch']
 
     def update_options(self):
         self.parse_form_data(self.medicover_session.get_form_data(self.request_params))
+
+    def search(self):
+        if self.can_search:
+            return self.medicover_session.get_available_visits(self.request_params)
+        return None
 
 
 class CustomDictMixin(object):
@@ -85,16 +99,17 @@ class FieldSet(CustomDictMixin, dict):
 
 
 class OptionList(list):
-
     def __init__(self, name, form, seq=()):
         self.name = name
         self.form = form
         super(OptionList, self).__init__(seq)
 
     def __repr__(self):
-        return '\n'.join('{:d}: {:s}'.format(index, option['text']) for index, option in enumerate(self)).encode('utf-8')
+        return '\n'.join(
+            '{:d}: {:s}'.format(index, option['text']) for index, option in enumerate(self)
+        ).encode('utf-8')
 
     def select(self, index):
         option_url_param_name = OPTION_TO_PARAM_MAP[self.name]
         self.form.request_params[option_url_param_name] = self[index]['id']
-
+        self.form.update_options()
