@@ -7,6 +7,8 @@ import requests
 
 from bs4 import BeautifulSoup
 
+from errors import ConfigurationError
+
 HOME_URL = 'https://mol.medicover.pl/'
 LOGIN_URL = 'https://mol.medicover.pl/Users/Account/LogOn'
 FORM_URL = 'https://mol.medicover.pl/api/MyVisits/SearchFreeSlotsToBook/FormModel?'
@@ -42,9 +44,14 @@ class API(object):
         return verification_token
 
     def log_in(self):
+        try:
+            user = os.environ['MEDICOVER_USER']
+            password = os.environ['MEDICOVER_PASSWORD']
+        except KeyError as e:
+            raise ConfigurationError('{:s} not found in env variables'.format(e.args[0]))
         payload = {
-            'userNameOrEmail': os.environ.get('MEDICOVER_USER'),
-            'password': os.environ.get('MEDICOVER_PASSWORD'),
+            'userNameOrEmail': user,
+            'password': password,
             '__RequestVerificationToken': self.get_verification_token()
         }
         response = self.session.post(LOGIN_URL, data=payload)
