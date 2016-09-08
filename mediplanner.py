@@ -4,15 +4,17 @@ import json
 import os
 import re
 import requests
-
+from datetime import datetime
 from bs4 import BeautifulSoup
 
 from errors import ConfigurationError
+
 
 HOME_URL = 'https://mol.medicover.pl/'
 LOGIN_URL = 'https://mol.medicover.pl/Users/Account/LogOn'
 FORM_URL = 'https://mol.medicover.pl/api/MyVisits/SearchFreeSlotsToBook/FormModel?'
 AVAILABLE_VISITS_URL = 'https://mol.medicover.pl/api/MyVisits/SearchFreeSlotsToBook?language=pl-PL'
+BOOK_VISIT_URL = 'https://mol.medicover.pl/MyVisits/BookingAppointmentProcess/Confirm'
 
 OPTION_TO_PARAM_MAP = {
     'regions': 'regionId',
@@ -65,13 +67,24 @@ class API(object):
     def get_available_visits(self, data=None):
         data = data or {}
         response = self.session.post(AVAILABLE_VISITS_URL, data=data)
-        return json.loads(response.content)
+        available_visits = response.json()['items']
+        return available_visits
+
+    def book_visit(self, visit_id):
+        confirmation_page = self.session.get(BOOK_VISIT_URL, params={'id': visit_id})
+        parsed_html = BeautifulSoup(confirmation_page.content, 'html.parser')
+        form = parsed_html.find('form', {'action': '/MyVisits/BookingAppointmentProcess/Confirm'})
+        input_tags = form.find_all('input')
+        post_data = {input_tag['name']: input_tag['value'] for input_tag in input_tags}
+        response = self.session.post(BOOK_VISIT_URL, data=post_data)
+        return response.ok
 
 
 class Form(object):
     def __init__(self):
         self.api = API()
         self.request_params = {}
+        self.results = []
         self.can_search = False
         self.fields = FieldSet()
         self.parse_form_data(self.api.get_form_data())
@@ -92,8 +105,10 @@ class Form(object):
 
     def search(self):
         if self.can_search:
-            return self.api.get_available_visits(self.request_params)
-        return None
+            self.results = [
+                Appointment(result_data, form=self) for result_data in
+                self.api.get_available_visits(self.request_params)
+                ]
 
 
 class CustomDictMixin(object):
@@ -123,3 +138,15 @@ class OptionList(list):
         option_url_param_name = OPTION_TO_PARAM_MAP[self.name]
         self.form.request_params[option_url_param_name] = self[index]['id']
         self.form.update_options()
+
+
+class Appointment(object):
+    def __init__(self, data, form):
+        self.id = data['id']
+        self.doctor = data['doctorName']
+        self.specialization = data['specializationName']
+        self.date = datetime.strptime(data['appointmentDate'], '%Y-%m-%dT%H:%M:%S')
+        self.form = form
+
+    def book(self):
+        return self.form.api.book_visit(self.id)
