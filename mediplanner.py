@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 import json
 import os
 import re
-
 import requests
+
 from bs4 import BeautifulSoup
 
 HOME_URL = 'https://mol.medicover.pl/'
@@ -28,7 +28,7 @@ def camelcase_to_underscore(val):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-class MedicoverSession(object):
+class API(object):
     def __init__(self):
         self.session = requests.Session()
         self.session.headers = {'User-Agent': 'Mozilla/5.0', 'X-Requested-With': 'XMLHttpRequest'}
@@ -61,28 +61,31 @@ class MedicoverSession(object):
         return json.loads(response.content)
 
 
-class MedicoverForm(object):
+class Form(object):
     def __init__(self):
-        self.medicover_session = MedicoverSession()
+        self.api = API()
         self.request_params = {}
         self.can_search = False
         self.fields = FieldSet()
-        self.parse_form_data(self.medicover_session.get_form_data())
+        self.parse_form_data(self.api.get_form_data())
 
     def parse_form_data(self, data):
         for select_name, option_list in data.items():
             if select_name.startswith('available'):
                 underscore_name = camelcase_to_underscore(select_name.lstrip('available_'))
-                self.fields[underscore_name] = OptionList(underscore_name, self,
-                                                          [option for option in option_list if option['id'] >= 0])
+                self.fields[underscore_name] = OptionList(
+                    name=underscore_name,
+                    form=self,
+                    seq=[option for option in option_list if option['id'] >= 0]
+                )
         self.can_search = data['canSearch']
 
     def update_options(self):
-        self.parse_form_data(self.medicover_session.get_form_data(self.request_params))
+        self.parse_form_data(self.api.get_form_data(self.request_params))
 
     def search(self):
         if self.can_search:
-            return self.medicover_session.get_available_visits(self.request_params)
+            return self.api.get_available_visits(self.request_params)
         return None
 
 
