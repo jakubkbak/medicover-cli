@@ -60,17 +60,20 @@ class API(object):
         response.raise_for_status()
 
     def get_form_data(self, params=None):
-        params = params or {}
+        if params is None:
+            params = {}
         response = self.session.get(FORM_URL, params=params)
         return json.loads(response.content)
 
     def get_available_visits(self, data=None):
-        data = data or {}
+        if data is None:
+            data = {}
         response = self.session.post(AVAILABLE_VISITS_URL, data=data)
         available_visits = response.json()['items']
         return available_visits
 
     def book_visit(self, visit_id):
+        # Parsing HTML is required to get the verification token and visit data from the form tag
         confirmation_page = self.session.get(BOOK_VISIT_URL, params={'id': visit_id})
         parsed_html = BeautifulSoup(confirmation_page.content, 'html.parser')
         form = parsed_html.find('form', {'action': '/MyVisits/BookingAppointmentProcess/Confirm'})
@@ -80,7 +83,7 @@ class API(object):
         return response.ok
 
 
-class Form(object):
+class SearchForm(object):
     def __init__(self):
         self.api = API()
         self.request_params = {}
@@ -90,11 +93,11 @@ class Form(object):
         self.parse_form_data(self.api.get_form_data())
 
     def parse_form_data(self, data):
-        for select_name, option_list in data.items():
-            if select_name.startswith('available'):
-                underscore_name = camelcase_to_underscore(select_name.lstrip('available_'))
-                self.fields[underscore_name] = OptionList(
-                    name=underscore_name,
+        for field_name, option_list in data.items():
+            if field_name.startswith('available'):
+                underscore_name = camelcase_to_underscore(field_name.lstrip('available_'))
+                self.fields[underscore_name] = Options(
+                    field_name=underscore_name,
                     form=self,
                     seq=[option for option in option_list if option['id'] >= 0]
                 )
@@ -111,31 +114,45 @@ class Form(object):
                 ]
 
 
-class CustomDictMixin(object):
+class FieldSet(dict):
     def __getattr__(self, name):
+        """
+        Performs dict lookup using the attribute name as the dict key.
+        """
         return self[name]
 
-    def __repr__(self):
-        return '\n'.join(key_name for key_name in self.keys()).encode('utf-8')
+    def list(self):
+        """
+        Lists all available fields on the FieldSet instance.
+        """
+        print '\n'.join(key_name for key_name in self.keys()).encode('utf-8')
 
 
-class FieldSet(CustomDictMixin, dict):
-    pass
-
-
-class OptionList(list):
-    def __init__(self, name, form, seq=()):
-        self.name = name
+class Options(list):
+    def __init__(self, field_name, form, seq=()):
+        self.field_name = field_name
         self.form = form
-        super(OptionList, self).__init__(seq)
+        super(Options, self).__init__(seq)
 
-    def __repr__(self):
-        return '\n'.join(
+    def list(self):
+        """
+        Prints all available option values as an enumerated list.
+        """
+        print '\n'.join(
             '{:d}: {:s}'.format(index, option['text']) for index, option in enumerate(self)
         ).encode('utf-8')
 
     def select(self, index):
-        option_url_param_name = OPTION_TO_PARAM_MAP[self.name]
+        """
+        Selects the option at the specified index and updates other fields based on the return value from the server.
+
+        Example:
+            form = SearchForm()
+            form.fields.clinics.select(14)
+
+            This narrows down form.fields.doctors to only those who work in selected clinic.
+        """
+        option_url_param_name = OPTION_TO_PARAM_MAP[self.field_name]
         self.form.request_params[option_url_param_name] = self[index]['id']
         self.form.update_options()
 
