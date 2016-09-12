@@ -32,6 +32,11 @@ def camelcase_to_underscore(val):
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
+class Medicover(object):
+    def __init__(self):
+        self.form = SearchForm()
+
+
 class API(object):
     def __init__(self):
         self.session = requests.Session()
@@ -88,8 +93,8 @@ class SearchForm(object):
         self.api = API()
         self.request_params = {}
         self.results = []
-        self.can_search = False
         self.fields = FieldSet()
+        self.can_search = False
         self.parse_form_data(self.api.get_form_data())
 
     def parse_form_data(self, data):
@@ -109,7 +114,7 @@ class SearchForm(object):
     def search(self):
         if self.can_search:
             self.results = [
-                Appointment(result_data, form=self) for result_data in
+                AvailableVisit(result_data, form=self) for result_data in
                 self.api.get_available_visits(self.request_params)
                 ]
 
@@ -157,7 +162,7 @@ class Options(list):
         self.form.update_options()
 
 
-class Appointment(object):
+class AvailableVisit(object):
     def __init__(self, data, form):
         self.id = data['id']
         self.doctor = data['doctorName']
@@ -167,3 +172,13 @@ class Appointment(object):
 
     def book(self):
         return self.form.api.book_visit(self.id)
+
+
+class VisitPreference(object):
+    def __init__(self, search_params, hour_from=None, hour_to=None, date_from=None, date_to=None, weekday=None):
+        self.search_params = search_params
+        self.hour_from = hour_from
+        self.hour_to = hour_to
+        self.date_from = date_from
+        self.date_to = date_to
+        self.weekday = weekday
