@@ -4,7 +4,7 @@ import json
 import os
 import re
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 
 from errors import ConfigurationError
@@ -64,16 +64,16 @@ class API(object):
         response = self.session.post(LOGIN_URL, data=payload)
         response.raise_for_status()
 
-    def get_form_data(self, params=None):
-        if params is None:
-            params = {}
-        response = self.session.get(FORM_URL, params=params)
+    def get_form_data(self, request_params=None):
+        if request_params is None:
+            request_params = {}
+        response = self.session.get(FORM_URL, params=request_params)
         return json.loads(response.content)
 
-    def get_available_visits(self, data=None):
-        if data is None:
-            data = {}
-        response = self.session.post(AVAILABLE_VISITS_URL, data=data)
+    def get_available_visits(self, request_data=None):
+        if request_data is None:
+            request_data = {}
+        response = self.session.post(AVAILABLE_VISITS_URL, data=request_data)
         available_visits = response.json()['items']
         return available_visits
 
@@ -117,6 +117,15 @@ class SearchForm(object):
                 AvailableVisit(result_data, form=self) for result_data in
                 self.api.get_available_visits(self.request_params)
                 ]
+
+    def load_more(self):
+        if len(self.results) > 0:
+            self.request_params['searchForNextSince'] = self._get_next_search_since_value()
+            self.search()
+
+    def _get_next_search_since_value(self):
+        next_date = self.results[0].date + timedelta(hours=22)
+        return next_date.strftime('%Y-%m-%dT%H:%M:%S.000Z')
 
 
 class FieldSet(dict):
