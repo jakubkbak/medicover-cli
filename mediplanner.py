@@ -192,13 +192,6 @@ class VisitPreference(object):
         self.date_to = date_to
         self.weekday = weekday
 
-    def search(self):
-        api = API()
-        results = [
-            AvailableVisit(result_data, form=self) for result_data in
-            api.get_available_visits(self.search_params)
-            ]
-
     def check_if_visit_matches(self, available_visit):
         if self.weekday and self.weekday != available_visit.date.isoweekday():
             return False
