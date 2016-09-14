@@ -2,13 +2,12 @@ from __future__ import unicode_literals
 
 import json
 import os
-import re
 import requests
 from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 
 from errors import ConfigurationError
-
+from tools import time_string_to_tuple, camelcase_to_underscore
 
 HOME_URL = 'https://mol.medicover.pl/'
 LOGIN_URL = 'https://mol.medicover.pl/Users/Account/LogOn'
@@ -25,11 +24,6 @@ OPTION_TO_PARAM_MAP = {
     'doctors': 'doctorId',
     'specializations': 'specializationId'
 }
-
-
-def camelcase_to_underscore(val):
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', val)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
 class Medicover(object):
@@ -184,10 +178,10 @@ class AvailableVisit(object):
 
 
 class VisitPreference(object):
-    def __init__(self, search_params, hour_from=None, hour_to=None, date_from=None, date_to=None, weekday=None):
+    def __init__(self, search_params, time_from=None, time_to=None, date_from=None, date_to=None, weekday=None):
         self.search_params = search_params
-        self.hour_from = hour_from
-        self.hour_to = hour_to
+        self.time_from = time_string_to_tuple(time_from)
+        self.time_to = time_string_to_tuple(time_to)
         self.date_from = date_from
         self.date_to = date_to
         self.weekday = weekday
@@ -195,9 +189,9 @@ class VisitPreference(object):
     def check_if_visit_matches(self, available_visit):
         if self.weekday and self.weekday != available_visit.date.isoweekday():
             return False
-        if self.hour_from and self.hour_from > available_visit.date.hour:
+        if self.time_from and self.time_from >= (available_visit.date.hour, available_visit.date.minute):
             return False
-        if self.hour_to and self.hour_to < available_visit.date.hour:
+        if self.time_to and self.time_to <= (available_visit.date.hour, available_visit.date.minute):
             return False
         if self.date_from and self.date_from > available_visit.date:
             return False
