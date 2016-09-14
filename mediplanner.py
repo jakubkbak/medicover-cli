@@ -178,12 +178,14 @@ class AvailableVisit(object):
 
 
 class VisitPreference(object):
+    DATE_FORMAT = '%d.%m.%Y'
+
     def __init__(self, search_params, time_from=None, time_to=None, date_from=None, date_to=None, weekday=None):
         self.search_params = search_params
-        self.time_from = time_string_to_tuple(time_from)
-        self.time_to = time_string_to_tuple(time_to)
-        self.date_from = date_from
-        self.date_to = date_to
+        self.time_from = time_string_to_tuple(time_from) if time_from else None
+        self.time_to = time_string_to_tuple(time_to) if time_to else None
+        self.date_from = datetime.strptime(date_from, self.DATE_FORMAT) if date_from else None
+        self.date_to = datetime.strptime(date_to, self.DATE_FORMAT) if date_to else None
         self.weekday = weekday
 
     def check_if_visit_matches(self, available_visit):
