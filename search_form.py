@@ -29,21 +29,30 @@ class SearchForm(object):
 
     def update_options(self):
         self._parse_form_data(self.api.get_form_data(self.request_params))
+        # do not check on first update (request_params still empty)
+        if self.request_params:
+            self._check_if_selected_options_still_valid()
 
     def _parse_form_data(self, data):
         for field_name, option_list in data.items():
             if field_name.startswith('available'):
                 underscore_name = camelcase_to_underscore(field_name.lstrip('available_'))
-                self.fields[underscore_name] = Field(
-                    form=self,
-                    name=underscore_name,
-                    options_list=[option for option in option_list if option['id'] >= 0]
-                )
+                if underscore_name in self.fields:
+                    del self.fields[underscore_name].options[:]
+                    self.fields[underscore_name].options.extend(option_list)
+                else:
+                    self.fields[underscore_name] = Field(
+                        form=self,
+                        name=underscore_name,
+                        options_list=option_list
+                    )
         self.can_search = data['canSearch']
 
-    def _check_if_selected_options_still_valid(self):  # TODO
-        for field_name, field_object in self.fields.items():
-            pass
+    def _check_if_selected_options_still_valid(self):
+        for field in self.fields.values():
+            if field.selected and field.selected not in field.options:
+                print 'Previously selected value for "{field}" ' \
+                      'is not available with current selection'.format(field=field.name)
 
     def _get_next_search_since_value(self):
         next_date = self.results[0].date + timedelta(hours=22)
@@ -80,7 +89,8 @@ class Field(object):
         self.form = form
         self.name = name
         self.selected = None
-        self.options = options_list
+        # filter out interface options like 'Choose doctor'
+        self.options = [option for option in options_list if option['id'] >= 0]
 
     def list(self):
         """
