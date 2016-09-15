@@ -34,12 +34,16 @@ class SearchForm(object):
         for field_name, option_list in data.items():
             if field_name.startswith('available'):
                 underscore_name = camelcase_to_underscore(field_name.lstrip('available_'))
-                self.fields[underscore_name] = Options(
-                    field_name=underscore_name,
+                self.fields[underscore_name] = Field(
                     form=self,
-                    seq=[option for option in option_list if option['id'] >= 0]
+                    name=underscore_name,
+                    options_list=[option for option in option_list if option['id'] >= 0]
                 )
         self.can_search = data['canSearch']
+
+    def _check_if_selected_options_still_valid(self):  # TODO
+        for field_name, field_object in self.fields.items():
+            pass
 
     def _get_next_search_since_value(self):
         next_date = self.results[0].date + timedelta(hours=22)
@@ -60,7 +64,8 @@ class FieldSet(dict):
         print '\n'.join(key_name for key_name in self.keys()).encode('utf-8')
 
 
-class Options(list):
+class Field(object):
+
     OPTION_TO_PARAM_MAP = {
         'regions': 'regionId',
         'clinics': 'clinicId',
@@ -71,17 +76,18 @@ class Options(list):
         'specializations': 'specializationId'
     }
 
-    def __init__(self, field_name, form, seq=()):
-        self.field_name = field_name
+    def __init__(self, form, name, options_list):
         self.form = form
-        super(Options, self).__init__(seq)
+        self.name = name
+        self.selected = None
+        self.options = options_list
 
     def list(self):
         """
         Prints all available option values as an enumerated list.
         """
         print '\n'.join(
-            '{:d}: {:s}'.format(index, option['text']) for index, option in enumerate(self)
+            '{:d}: {:s}'.format(index, option['text']) for index, option in enumerate(self.options)
         ).encode('utf-8')
 
     def select(self, index):
@@ -94,8 +100,11 @@ class Options(list):
 
             This narrows down form.fields.doctors to only those who work in selected clinic.
         """
-        option_url_param_name = self.OPTION_TO_PARAM_MAP[self.field_name]
-        self.form.request_params[option_url_param_name] = self[index]['id']
+        selected_option = self.options[index]
+        option_url_param_name = self.OPTION_TO_PARAM_MAP[self.name]
+        selected_option_id = selected_option['id']
+        self.form.request_params[option_url_param_name] = selected_option_id
+        self.selected = selected_option
         self.form.update_options()
 
 
