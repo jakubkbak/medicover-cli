@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from datetime import timedelta, datetime
 
 from api import API
+from errors import SearchError
 from tools import camelcase_to_underscore
 
 
@@ -60,6 +61,8 @@ class SearchForm(object):
 
 
 class FieldSet(dict):
+    field_order = ['regions', 'booking_types', 'specializations', 'clinics', 'languages', 'doctors']
+
     def __getattr__(self, name):
         """
         Performs dict lookup using the attribute name as the dict key.
@@ -72,9 +75,18 @@ class FieldSet(dict):
         """
         print '\n'.join(key_name for key_name in self.keys()).encode('utf-8')
 
+    def check_if_options_combination_exists(self, **kwargs):
+        for field_name in self.field_order:
+            if field_name in kwargs:
+                try:
+                    self[field_name].select_by_name(kwargs[field_name])
+                except SearchError as e:
+                    print e.message
+                    return False
+        return True
+
 
 class Field(object):
-
     OPTION_TO_PARAM_MAP = {
         'regions': 'regionId',
         'clinics': 'clinicId',
@@ -116,6 +128,23 @@ class Field(object):
         self.form.request_params[option_url_param_name] = selected_option_id
         self.selected = selected_option
         self.form.update_options()
+
+    def select_by_name(self, name):
+        matching = [option for option in self.options if name in option['text']]
+        matching_length = len(matching)
+        if matching_length == 1:
+            found = matching[0]
+            self.select(self.options.index(found))
+        else:
+            if matching_length > 1:
+                error_message = 'Multiple options ({matching_length}) found for "{name}" in {field_name} list. ' \
+                      'Found options: {options}'.format(
+                        matching_length=matching_length, name=name, field_name=self.name,
+                        options=', '.join(option['text'] for option in matching)
+                      )
+            else:
+                error_message = '"{name}" not found in {field_name} list'.format(name=name, field_name=self.name)
+            raise SearchError(error_message)
 
 
 class AvailableVisit(object):
