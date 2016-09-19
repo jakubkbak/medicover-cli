@@ -2,7 +2,7 @@ import os
 
 import click
 
-from .medicover import Medicover
+from medicover import Medicover
 
 
 @click.group()
