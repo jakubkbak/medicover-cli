@@ -1,11 +1,9 @@
 from __future__ import unicode_literals
 
 import json
-import os
 import requests
 from bs4 import BeautifulSoup
 
-from errors import ConfigurationError
 
 HOME_URL = 'https://mol.medicover.pl/'
 LOGIN_URL = 'https://mol.medicover.pl/Users/Account/LogOn'
@@ -15,10 +13,10 @@ BOOK_VISIT_URL = 'https://mol.medicover.pl/MyVisits/BookingAppointmentProcess/Co
 
 
 class API(object):
-    def __init__(self):
+    def __init__(self, user, password):
         self.session = requests.Session()
         self.session.headers = {'User-Agent': 'Mozilla/5.0', 'X-Requested-With': 'XMLHttpRequest'}
-        self.log_in()
+        self.log_in(user, password)
 
     def _get_verification_token(self):
         response = self.session.get(HOME_URL)
@@ -27,12 +25,7 @@ class API(object):
         verification_token = parsed_html.select('input[name="__RequestVerificationToken"]')[0]['value']
         return verification_token
 
-    def log_in(self):
-        try:
-            user = os.environ['MEDICOVER_USER']
-            password = os.environ['MEDICOVER_PASSWORD']
-        except KeyError as e:
-            raise ConfigurationError('{:s} not found in env variables'.format(e.args[0]))
+    def log_in(self, user, password):
         payload = {
             'userNameOrEmail': user,
             'password': password,

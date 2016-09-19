@@ -2,25 +2,24 @@ from __future__ import unicode_literals
 
 from datetime import timedelta, datetime
 
-from api import API
 from errors import SearchError
 from tools import camelcase_to_underscore
 
 
 class SearchForm(object):
-    def __init__(self):
-        self.api = API()
+    def __init__(self, parent):
+        self.parent = parent
         self.request_params = {}
         self.results = []
         self.fields = FieldSet()
         self.can_search = False
-        self._parse_form_data(self.api.get_form_data())
+        self._parse_form_data(self.parent.api.get_form_data())
 
     def search(self):
         if self.can_search:
             self.results = [
                 AvailableVisit(result_data, form=self) for result_data in
-                self.api.get_available_visits(self.request_params)
+                self.parent.api.get_available_visits(self.request_params)
                 ]
 
     def load_more(self):
@@ -29,7 +28,7 @@ class SearchForm(object):
             self.search()
 
     def update_options(self):
-        self._parse_form_data(self.api.get_form_data(self.request_params))
+        self._parse_form_data(self.parent.api.get_form_data(self.request_params))
         # do not check on first update (request_params still empty)
         if self.request_params:
             self._check_if_selected_options_still_valid()
@@ -148,12 +147,25 @@ class Field(object):
 
 
 class AvailableVisit(object):
+    date_input_format = '%Y-%m-%dT%H:%M:%S'
+    date_output_format = '%d-%m-%Y %H:%M'
+
     def __init__(self, data, form):
         self.id = data['id']
-        self.doctor = data['doctorName']
         self.specialization = data['specializationName']
-        self.date = datetime.strptime(data['appointmentDate'], '%Y-%m-%dT%H:%M:%S')
+        self.clinic = data['clinicName']
+        self.doctor = data['doctorName']
+        self.date = datetime.strptime(data['appointmentDate'], self.date_input_format)
         self.form = form
 
+    def __unicode__(self):
+        return '{specialization}, {doctor}, {clinic}, {date}'.format(specialization=self.specialization,
+                                                                     doctor=self.doctor,
+                                                                     clinic=self.clinic,
+                                                                     date=self.date.strftime(self.date_output_format))
+
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+
     def book(self):
-        return self.form.api.book_visit(self.id)
+        return self.form.parent.api.book_visit(self.id)
