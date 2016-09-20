@@ -62,17 +62,16 @@ class SearchForm(object):
 class FieldSet(dict):
     field_order = ['regions', 'booking_types', 'specializations', 'clinics', 'languages', 'doctors']
 
-    def __getattr__(self, name):
-        """
-        Performs dict lookup using the attribute name as the dict key.
-        """
-        return self[name]
-
     def list(self):
         """
-        Lists all available fields on the FieldSet instance.
+        Lists all available fields on the FieldSet instance and their current values.
         """
-        return '\n'.join(key_name for key_name in self.keys()).encode('utf-8')
+        result = []
+        for field_name in self.field_order:
+            field = self[field_name]
+            field_selected_text = field.selected['text'] if field.selected else ''
+            result.append('{}: {}'.format(field_name, field_selected_text))
+        return '\n'.join(result)
 
     def check_if_options_combination_exists(self, **kwargs):
         for field_name in self.field_order:
@@ -103,13 +102,13 @@ class Field(object):
         # filter out interface options like 'Choose doctor'
         self.options = [option for option in options_list if option['id'] >= 0]
 
-    def list(self):
+    def list_options(self):
         """
         Prints all available option values as an enumerated list.
         """
         return '\n'.join(
             '{:d}: {:s}'.format(index, option['text']) for index, option in enumerate(self.options)
-        ).encode('utf-8')
+        )
 
     def select(self, index):
         """

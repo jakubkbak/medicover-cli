@@ -2,7 +2,7 @@ import os
 
 import click
 
-from cli.click_form import CLIFormWrapper
+from cli.form import CLIFormWrapper
 from medicover import Medicover
 from visit_scheduler import VisitPreference
 
