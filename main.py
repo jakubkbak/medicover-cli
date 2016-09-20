@@ -2,6 +2,7 @@ import os
 
 import click
 
+from cli.click_form import CLIFormWrapper
 from medicover import Medicover
 from visit_scheduler import VisitPreference
 
@@ -29,11 +30,8 @@ def medicover(ctx, u, p):
 @click.pass_context
 def search(ctx):
     m = ctx.obj['M']
-    for field_name in m.form.fields.field_order:
-        field_obj = m.form.fields[field_name]
-        field_obj.list()
-        value = click.prompt('Please select a value for {field_name}'.format(field_name=field_name), type=int)
-        field_obj.select(value)
+    cli_form = CLIFormWrapper(m.form)
+    cli_form.start()
     m.form.search()
     while True:
         click.echo('\n'.join('{:d}: {:s}'.format(index, visit) for index, visit in enumerate(m.form.results)))

@@ -72,7 +72,7 @@ class FieldSet(dict):
         """
         Lists all available fields on the FieldSet instance.
         """
-        print '\n'.join(key_name for key_name in self.keys()).encode('utf-8')
+        return '\n'.join(key_name for key_name in self.keys()).encode('utf-8')
 
     def check_if_options_combination_exists(self, **kwargs):
         for field_name in self.field_order:
@@ -107,7 +107,7 @@ class Field(object):
         """
         Prints all available option values as an enumerated list.
         """
-        print '\n'.join(
+        return '\n'.join(
             '{:d}: {:s}'.format(index, option['text']) for index, option in enumerate(self.options)
         ).encode('utf-8')
 

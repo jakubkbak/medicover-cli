@@ -9,6 +9,6 @@ setup(
         'requests', 'bs4', 'click'
     ],
     entry_points={
-        'console_scripts': ['medicover=cli:main']
+        'console_scripts': ['medicover=main:main']
     }
 )
