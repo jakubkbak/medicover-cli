@@ -4,7 +4,6 @@ import click
 
 from cli.form import CLIFormWrapper
 from medicover import Medicover
-from visit_scheduler import VisitPreference
 
 
 VISIT_PREFERENCE_PARAMS_DATA = (
