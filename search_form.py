@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 from datetime import timedelta, datetime
 
-from errors import SearchError
 from tools import camelcase_to_underscore
 
 
@@ -64,7 +63,7 @@ class FieldSet(dict):
 
     def list(self):
         """
-        Lists all available fields on the FieldSet instance and their current values.
+        Returns a string of all available fields on the FieldSet instance and their current values.
         """
         result = []
         for field_name in self.field_order:
@@ -72,16 +71,6 @@ class FieldSet(dict):
             field_selected_text = field.selected['text'] if field.selected else ''
             result.append('{}: {}'.format(field_name, field_selected_text))
         return '\n'.join(result)
-
-    def check_if_options_combination_exists(self, **kwargs):
-        for field_name in self.field_order:
-            if field_name in kwargs:
-                try:
-                    self[field_name].select_by_name(kwargs[field_name])
-                except SearchError as e:
-                    print e.message
-                    return False
-        return True
 
 
 class Field(object):
@@ -104,7 +93,7 @@ class Field(object):
 
     def list_options(self):
         """
-        Prints all available option values as an enumerated list.
+        Returns a string with all available option values and their indexes
         """
         return '\n'.join(
             '{:d}: {:s}'.format(index, option['text']) for index, option in enumerate(self.options)
@@ -126,23 +115,6 @@ class Field(object):
         self.form.request_params[option_url_param_name] = selected_option_id
         self.selected = selected_option
         self.form.update_options()
-
-    def select_by_name(self, name):
-        matching = [option for option in self.options if name in option['text']]
-        matching_length = len(matching)
-        if matching_length == 1:
-            found = matching[0]
-            self.select(self.options.index(found))
-        else:
-            if matching_length > 1:
-                error_message = 'Multiple options ({matching_length}) found for "{name}" in {field_name} list. ' \
-                      'Found options: {options}'.format(
-                        matching_length=matching_length, name=name, field_name=self.name,
-                        options=', '.join(option['text'] for option in matching)
-                      )
-            else:
-                error_message = '"{name}" not found in {field_name} list'.format(name=name, field_name=self.name)
-            raise SearchError(error_message)
 
 
 class AvailableVisit(object):
