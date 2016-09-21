@@ -28,28 +28,13 @@ def medicover(ctx, u, p):
 
 @medicover.command()
 @click.pass_context
-def search(ctx):
+def form(ctx):
     m = ctx.obj['M']
     cli_form = CLIFormWrapper(m.form)
     cli_form.start()
-    m.form.search()
-    while True:
-        click.echo('\n'.join('{:d}: {:s}'.format(index, visit) for index, visit in enumerate(m.form.results)))
-        if click.confirm('Would you like to load more results'):
-            m.form.load_more()
-        else:
-            break
-    if click.confirm('Would you like to book a visit?'):
-        visit_to_book_index = click.prompt('Which visit would you like to book?', type=int)
-        visit = m.form.results[visit_to_book_index]
-        booked_ok = visit.book()
-        click.echo('Visit booked successfully' if booked_ok else 'Booking failed')
-    else:
-        if click.confirm('Would you like to create a visit preference from your search?'):
-            visit_preference_data = prompt_for_visit_preference_data()
-            vp = VisitPreference(m.form.request_params, **visit_preference_data)
 
 
+# not needed for now
 def prompt_for_visit_preference_data():
     click.echo('Please provide visit preference details. Press ENTER to skip a field')
     params = {}
