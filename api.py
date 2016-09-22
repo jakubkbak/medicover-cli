@@ -4,6 +4,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 
+from errors import AuthenticationError
 
 HOME_URL = 'https://mol.medicover.pl/'
 LOGIN_URL = 'https://mol.medicover.pl/Users/Account/LogOn'
@@ -32,7 +33,8 @@ class API(object):
             '__RequestVerificationToken': self._get_verification_token()
         }
         response = self.session.post(LOGIN_URL, data=payload)
-        response.raise_for_status()
+        if response.status_code != 302:  # medicover backend redirects on successful login
+            raise AuthenticationError
 
     def get_form_data(self, request_params=None):
         if request_params is None:

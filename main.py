@@ -3,6 +3,7 @@ import os
 import click
 
 from cli.form import CLIFormWrapper
+from errors import MissingCredentialsError
 from medicover import Medicover
 
 
@@ -16,12 +17,14 @@ VISIT_PREFERENCE_PARAMS_DATA = (
 
 
 @click.group()
-@click.option('-u', default=lambda: os.environ.get('MEDICOVER_USER'), show_default=False,
+@click.option('-u', default=lambda: os.environ.get('MEDICOVER_USER', None), show_default=False,
               help='Your Medicover card number')
-@click.option('-p', default=lambda: os.environ.get('MEDICOVER_PASSWORD'), show_default=False,
+@click.option('-p', default=lambda: os.environ.get('MEDICOVER_PASSWORD', None), show_default=False,
               help='Your Medicover password')
 @click.pass_context
 def medicover(ctx, u, p):
+    if not u or not p:
+        raise MissingCredentialsError
     ctx.obj['M'] = Medicover(user=u, password=p)
 
 
