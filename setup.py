@@ -1,14 +1,14 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 setup(
-    name='Medicover-CLI',
-    version='1.0',
-    py_modules=['cli'],
+    name='medicover-cli',
+    version='0.1',
+    packages=find_packages(),
     install_requires=[
         'requests', 'bs4', 'click'
     ],
     entry_points={
-        'console_scripts': ['medicover=main:main']
+        'console_scripts': ['medicover=medicover.main:main']
     }
 )
