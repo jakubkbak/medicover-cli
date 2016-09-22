@@ -32,7 +32,7 @@ class API(object):
             'password': password,
             '__RequestVerificationToken': self._get_verification_token()
         }
-        response = self.session.post(LOGIN_URL, data=payload)
+        response = self.session.post(LOGIN_URL, data=payload, allow_redirects=False)
         if response.status_code != 302:  # medicover backend redirects on successful login
             raise AuthenticationError
 
