@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from datetime import datetime
 
 from tools import time_string_to_tuple, weekday_to_int
