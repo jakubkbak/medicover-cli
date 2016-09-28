@@ -17,12 +17,11 @@ class CLIFormWrapper(object):
         self.form = form
 
     def start(self):
-        click.clear()
         click.echo(COMMAND_HELP)
         while True:
             click.echo('')  # newline
             command_string = click.prompt('Enter command')
-            click.clear()
+            click.echo('')  # newline
             command_parts = map(unicode.strip, command_string.split(' '))
             command_name = command_parts[0]
             args_list = command_parts[1:]
@@ -30,6 +29,8 @@ class CLIFormWrapper(object):
                 getattr(self, '_command_' + command_name)(*args_list)
             except AttributeError:
                 click.echo('Unknown command')
+            except TypeError:
+                click.echo('Incorrect arguments number for this command')
 
     @staticmethod
     def _command_help():
@@ -63,10 +64,10 @@ class CLIFormWrapper(object):
         click.echo('\n'.join('{}: {}'.format(index, unicode(result)) for index, result in enumerate(self.form.results)))
 
     def _command_book(self, visit_index):
-        visit_index = int(visit_index)
         try:
+            visit_index = int(visit_index)
             visit = self.form.results[visit_index]
-        except IndexError:
+        except (IndexError, ValueError):
             click.echo('Invalid visit index')
             return
         booked_ok = visit.book()
