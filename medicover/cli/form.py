@@ -13,6 +13,7 @@ COMMAND_HELP = 'Available commands:\n' \
 
 
 class CLIFormWrapper(object):
+    """Command line interface for interactive visit booking"""
     def __init__(self, form):
         self.form = form
 
@@ -26,6 +27,7 @@ class CLIFormWrapper(object):
             command_name = command_parts[0]
             args_list = command_parts[1:]
             try:
+                # select from methods below based on the command input string
                 getattr(self, '_command_' + command_name)(*args_list)
             except AttributeError:
                 click.echo('Unknown command')

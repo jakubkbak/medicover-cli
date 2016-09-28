@@ -54,6 +54,7 @@ class SearchForm(object):
                       'is not available with current selection'.format(field=field.name)
 
     def _get_next_search_since_value(self):
+        """Get the date value that medicover uses for 'load more results' request"""
         next_date = self.results[0].date + timedelta(hours=22)
         return next_date.strftime('%Y-%m-%dT%H:%M:%S.000Z')
 
